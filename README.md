@@ -1,2 +1,2 @@
 # GlobalPlantDiseaseReports
-Global Plant Disease Reports (GPDR) - A shinylive app
+Robigus - A UF/IFAS initiative to catalog and map plant diseases globally
