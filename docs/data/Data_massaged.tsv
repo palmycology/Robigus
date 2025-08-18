@@ -118,7 +118,7 @@ ID	Pathogen	Host	Disease	Info	State	Country	Year	Citation	MapStatus
 117	Fusarium foetens	Hiemalis begonia (Begonia x hiemalis)	Wilt			United States	2004	Plant Disease, 88(11), 1287. https://doi.org/10.1094/PDIS.2004.88.11.1287B	Mappable
 118	Inonotus rickii	Aberia caffra and Quercus cerris	#noDIS			#noLOC	2005	Plant Disease, 89(1), 107. https://doi.org/10.1094/PD-89-0107C	Unmappable
 119	Acidovorax avenae subsp. citrulli	Cucumber (Cucumis sativus)	#noDIS			#noLOC	1999	Plant Disease, 83(10), 965. https://doi.org/10.1094/PDIS.1999.83.10.965D	Unmappable
-120	Acidovorax avenae subsp. Citrulli	Gramma	#noDIS			Australia	2002	Plant Disease, 86(12), 1406. https://doi.org/10.1094/PDIS.2002.86.12.1406A	Mappable
+120	Acidovorax avenae subsp. citrulli	Gramma	#noDIS			Australia	2002	Plant Disease, 86(12), 1406. https://doi.org/10.1094/PDIS.2002.86.12.1406A	Mappable
 121	Acidovorax avenae subsp. citrulli	Edible seed watermelon (Citrullus lanatus var. lanatus)	#noDIS			China	2006	Plant Disease, 90(8), 1112. https://doi.org/10.1094/PD-90-1112A	Mappable
 122	Acremonium typhinum	American beachgrass	#noDIS	An endophyte		#noLOC	1991	Plant Disease, 75(5), 537. https://doi.org/10.1094/PD-75-0537B	Unmappable
 123	Streptomyces acidiscabies	#noHOST	Acid scab			#noLOC	1991	Plant Disease, 75(7), 750. https://doi.org/10.1094/PD-75-0750A	Unmappable
@@ -7324,7 +7324,7 @@ ID	Pathogen	Host	Disease	Info	State	Country	Year	Citation	MapStatus
 7324	Fusarium sacchari	Lady Finger banana	Postharvest fruit rot			Italy	2020	Plant Disease, 104(8), 2290-2290. https://doi.org/10.1094/PDIS-01-20-0143-PDN	Mappable
 7325	Diaporthe eres	Hardy kiwifruit	Postharvest fruit rot disease			China	2021	Plant Disease, 105(11), 3745-3745. https://doi.org/10.1094/PDIS-08-20-1705-PDN	Mappable
 7326	Penicillium expansum	Citrus reticulata cv. kinnow	Postharvest fruit rot			Pakistan	2019	Plant Disease, 103(1), 155-156. https://doi.org/10.1094/PDIS-06-18-1090-PDN	Mappable
-7327	Lasiodiplodia theobromae	Passion fruit (Passiflora edulis)	Postharvest fruit rot			China	2021	Plant Disease, 105(4), 1198-1198. https://doi.org/10.1094/PDIS-06-20-1346-PDN	Mappable
+7327	Lasiodiplodia theobromae	Passionfruit (Passiflora edulis)	Postharvest fruit rot			China	2021	Plant Disease, 105(4), 1198-1198. https://doi.org/10.1094/PDIS-06-20-1346-PDN	Mappable
 7328	Fusarium equiseti	Tomato (Solanum lycopersicum)	Postharvest fruit rot			China	2019	Plant Disease, 103(7), 1782-1783. https://doi.org/10.1094/PDIS-01-19-0077-PDN	Mappable
 7329	Fusarium equiseti	Mandarin (Citrus reticulata Kinnow)	Postharvest fusarium rot			Pakistan	2021	Plant Disease, 105(12), 4170-4170. https://doi.org/10.1094/PDIS-03-21-0513-PDN	Mappable
 7330	Rhizopus oryzae	Kiwifruit	Postharvest rot		Shandong Province	China	2019	Plant Disease, 103(11), 2951-2951. https://doi.org/10.1094/PDIS-12-18-2277-PDN	Mappable
@@ -8814,8 +8814,8 @@ ID	Pathogen	Host	Disease	Info	State	Country	Year	Citation	MapStatus
 8814	Paramyrothecium roridum	Coffee (Coffea arabica)	Leaf spot and stem rot diseases			Peru	2023	Plant Disease, 107(1), 221-221. https://doi.org/10.1094/PDIS-03-22-0517-PDN	Mappable
 8815	Paramyrothecium vignicola	Brassica chinensis var. parachinensis	Leaf spot			Thailand	2024	Plant Disease, 108(8), 2567-2567. https://doi.org/10.1094/PDIS-04-24-0753-PDN	Mappable
 8816	Paraphoma chrysanthemicola	Atractylodes lancea	Crown and leaf rot			China	2022	Plant Disease, 106(8), 2268-2268. https://doi.org/10.1094/PDIS-11-21-2408-PDN	Mappable
-8817	Passiflora latent virus	Passion fruit (Passiflora edulis)	#noDIS			China	2023	Plant Disease, 107(10), 3326-3326. https://doi.org/10.1094/PDIS-05-23-0896-PDN	Mappable
-8818	Passiflora latent virus	Passion fruit (Passiflora edulis)	#noDIS			Republic of Korea	2023	Plant Disease, 107(9), 2893-2893. https://doi.org/10.1094/PDIS-01-23-0051-PDN	Mappable
+8817	Passiflora latent virus	Passionfruit (Passiflora edulis)	#noDIS			China	2023	Plant Disease, 107(10), 3326-3326. https://doi.org/10.1094/PDIS-05-23-0896-PDN	Mappable
+8818	Passiflora latent virus	Passionfruit (Passiflora edulis)	#noDIS			Republic of Korea	2023	Plant Disease, 107(9), 2893-2893. https://doi.org/10.1094/PDIS-01-23-0051-PDN	Mappable
 8819	Passion fruit green spot virus	Yellow passion fruit (Passiflora edulis f. flavicarpa)	#noDIS		Casanare	Colombia	2023	Plant Disease, 107(7), 2270-2270. https://doi.org/10.1094/PDIS-09-22-2267-PDN	Mappable
 8820	Nigrospora sphaerica	Passionfruit (Passiflora edulis)	Leaf blight			China	2022	Plant Disease, 106(1), 323-323. https://doi.org/10.1094/PDIS-05-21-0900-PDN	Mappable
 8821	Tomato mottle mosaic virus	Pea (Pisum sativum)	#noDIS	Pea as a natural host of TMMV		China	2022	Plant Disease, 106(2), 775-775. https://doi.org/10.1094/PDIS-02-21-0280-PDN	Mappable
