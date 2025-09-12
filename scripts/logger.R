@@ -48,6 +48,19 @@ log_interaction <- function(session, action, details = NULL) {
   
   tryCatch({
     con <- dbConnect(RSQLite::SQLite(), db_path)
+    
+    # Ensure the logs table exists
+    dbExecute(con, "
+    CREATE TABLE IF NOT EXISTS logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      timestamp TEXT,
+      session_id TEXT,
+      ip TEXT,
+      action TEXT,
+      details TEXT
+      )
+    ")
+
     dbExecute(
       con,
       "INSERT INTO logs (timestamp, session_id, ip, action, details) VALUES (?,?,?,?,?)",
