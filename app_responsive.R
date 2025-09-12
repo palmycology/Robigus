@@ -82,7 +82,6 @@ all_countries <- sort(unique(trimws(na.omit(full_data_cleaned$Country))))
 mappable_countries <- all_countries[full_data_cleaned$MapStatus[match(all_countries, full_data_cleaned$Country)]=="Mappable"]
 unmappable_countries <- all_countries[full_data_cleaned$MapStatus[match(all_countries, full_data_cleaned$Country)]=="Unmappable"]
 
-
 ui <- fluidPage(
   theme = shinytheme("readable"),
   tags$head(
@@ -106,32 +105,76 @@ ui <- fluidPage(
         select.refreshOptions(false);
         if (message.selected) select.setValue(message.selected);
       });
+
+      // Force Leaflet map to resize & refit after load
+      $(document).on('shiny:connected', function() {
+        setTimeout(function() {
+          if (window.myLeafletMap) {
+            window.myLeafletMap.invalidateSize();
+            window.myLeafletMap.fitBounds(window.myLeafletMap.getBounds());
+          }
+        }, 500);
+      });
     ")),
     tags$style(HTML("
       body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; }
-      .main-title { font-size: 48px; font-weight: bold; color: #0f5132; padding:5px 0 5px 0; margin-bottom: 0; }
-      .subtitle { font-size: 20px; color: #6c757d; margin: 0; padding: 0; }
-      .card { border: 1px solid #d1e7dd; background-color: #e9f7ef; padding:10px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-      .sidebar { background-color: #ffffff; border-radius: 8px; padding: 15px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-      .dataTables_wrapper { background-color: #ffffff; padding: 10px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-      .leaflet-container { border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-      
+
+      .main-title { font-size: 48px; font-weight: bold; color: #0f5132;
+                    padding:5px 0 5px 0; margin-bottom: 0; }
+      .subtitle   { font-size: 20px; color: #6c757d; margin: 0; padding: 0; }
+
+      .card, .sidebar, .dataTables_wrapper, .leaflet-container {
+        border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      }
+      .card   { border: 1px solid #d1e7dd; background-color: #e9f7ef;
+                padding:10px; margin-bottom: 15px; }
+      .sidebar { background-color: #ffffff; padding: 15px; }
+
+      .dataTables_wrapper { background-color: #ffffff; padding: 10px; }
+      .leaflet-container  { border: 1px solid #ddd; }
+
+      /* Logo responsiveness */
+      .app-logo {
+        max-width: 100%;
+        height: auto;
+        border-radius: 3px;
+        margin-bottom: 10px;
+      }
+
+      /* Legend defaults */
+      .leaflet-control { font-size: 14px; }
+
       /* --- Responsive adjustments for smaller screens --- */
       @media (max-width: 768px) {
+        body { font-size: 12px; }
         .main-title { font-size: 28px; }
-        .subtitle { font-size: 16px; }
+        .subtitle   { font-size: 16px; }
+        h4 { font-size: 16px; }
         .sidebar { padding: 10px; margin-bottom: 15px; }
         .leaflet-container { height: 300px !important; }
+
+        /* Legend tweaks */
+        .leaflet-bottom.leaflet-right {
+          bottom: 5px !important;
+          right: 5px !important;
+        }
+        .leaflet-control {
+          font-size: 10px !important;
+          padding: 2px 4px !important;
+        }
       }
     "))
   ),
   
   # --- App Title & Subtitle ---
   div(
+    class = "title-block",
     style = "text-align:center; margin-top:-20px;",
     h1("Robigus", class="main-title"),
-    p("An initiative from the UF/IFAS Department of Plant Pathology to catalog and map plant diseases globally", class="subtitle"),
-    h6("Plant Disease Notes (1980 - 2024) published by American Phytopathological Society Press", style="color: black; margin-top:5px;")
+    p("An initiative from the UF/IFAS Department of Plant Pathology to catalog and map plant diseases globally",
+      class="subtitle"),
+    h6("Plant Disease Notes (1980 - 2024) published by American Phytopathological Society Press",
+       style="color: black; margin-top:5px;")
   ),
   
   uiOutput("banner_ui"),
@@ -142,6 +185,9 @@ ui <- fluidPage(
     column(
       width = 12, class = "col-md-4",
       div(class = "sidebar",
+          # Logo on top of sidebar
+          tags$img(src = "logo.png", class = "app-logo"),
+          
           # --- Filter Controls ---
           fluidRow(
             column(4, selectInput("letter_Pathogen", "Pathogen: A-Z", 
@@ -187,7 +233,8 @@ ui <- fluidPage(
                 box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
                 text-align: left;
               ",
-            tags$img(src = "logo.png", height = "60px", style = "float: right; margin-left: 10px; border-radius: 3px;"),
+            tags$img(src = "logo.png", height = "60px",
+                     style = "float: right; margin-left: 10px; border-radius: 3px;"),
             h4("About this App"),
             tags$p(HTML("<b>Creator:</b> ,<br>Assistant Professor")),
             tags$p(HTML("<b>Affiliation:</b><br>
