@@ -153,14 +153,10 @@ ui <- fluidPage(
         .sidebar { padding: 10px; margin-bottom: 15px; }
         .leaflet-container { height: 300px !important; }
 
-        /* Legend tweaks */
+        /* Legend tweaks: hide legend completely on narrow screens */
+        .leaflet-control-layers,
         .leaflet-bottom.leaflet-right {
-          bottom: 5px !important;
-          right: 5px !important;
-        }
-        .leaflet-control {
-          font-size: 10px !important;
-          padding: 2px 4px !important;
+          display: none !important;
         }
       }
     "))
@@ -186,7 +182,7 @@ ui <- fluidPage(
       width = 12, class = "col-md-4",
       div(class = "sidebar",
           # Logo on top of sidebar
-          tags$img(src = "logo.png", class = "app-logo"),
+          #tags$img(src = "logo.png", class = "app-logo"),
           
           # --- Filter Controls ---
           fluidRow(
@@ -295,7 +291,7 @@ server <- function(input, output, session) {
     vals <- unique(na.omit(df[[col]]))
     if(!is.null(letter) && letter != "All") {
       if(letter=="#") vals <- vals[grepl("^[^A-Za-z]", vals)]
-      else vals <- vals[grepl(paste0("^", letter), vals, ignore.case=TRUE)]
+      else vals <- grepl(paste0("^", letter), vals, ignore.case=TRUE)
     }
     sort(as.character(vals))
   }
@@ -368,7 +364,7 @@ server <- function(input, output, session) {
     }
     
     tags$div(class="card",
-             style = "padding:5px 10px; margin-top:5px; margin-bottom:10px;",  # compact padding & margin
+             style = "padding:5px 10px; margin-top:5px; margin-bottom:10px;",
              tags$h3("FILTER SUMMARY",
                      style = "font-weight:bold;color:#0f5132;text-align:center;margin:2px 0; padding:0;"),
              HTML(paste0(
@@ -385,7 +381,6 @@ server <- function(input, output, session) {
     selected_year <- filter_state$Year
     
     if(selected_year == "All") {
-      # Default map: all years
       df_summary <- df %>%
         group_by(Country) %>%
         summarise(
@@ -395,7 +390,6 @@ server <- function(input, output, session) {
           .groups = "drop"
         )
     } else {
-      # Map for selected year
       df_summary <- df %>%
         filter(Year == selected_year) %>%
         group_by(Country) %>%
@@ -407,11 +401,9 @@ server <- function(input, output, session) {
         )
     }
     
-    # Join to world map
     map_sf <- world %>%
       left_join(df_summary, by = c("name_long" = "Country"))
     
-    # Fill NAs
     map_sf$RecordCount_all[is.na(map_sf$RecordCount_all)] <- 0
     map_sf$Z_value[is.na(map_sf$Z_value)] <- 0
     map_sf$MapStatus[is.na(map_sf$MapStatus)] <- "Unmappable"
@@ -421,64 +413,52 @@ server <- function(input, output, session) {
   
   # --- Reactive filtered map ---
   filtered_map <- reactive({
-    map_sf <- precomputed_map()  # already has Z_value, RecordCount_all, MapStatus
+    map_sf <- precomputed_map()
     
     selected_country <- filter_state$Country
     any_filter <- filter_state$Pathogen != "All" || filter_state$Disease != "All" || filter_state$Host != "All"
     
-    # --- recompute counts for the active filtered dataset ---
     filtered_df <- filtered_data()
     counts <- filtered_df %>%
       count(Country, name = "RecordCount")
     
-    # join counts to map, fallback to 0 if missing
     map_sf <- map_sf %>%
       left_join(counts, by = c("name_long" = "Country")) %>%
       mutate(RecordCount = ifelse(is.na(RecordCount), 0, RecordCount))
     
-    # Fixed palette and breaks for Z-scores
-    z_palette <- rev(hcl.colors(7, "Greens 3"))  # 7 colors for -3:3
+    z_palette <- rev(hcl.colors(7, "Greens 3"))
     z_breaks <- seq(-3, 3, length.out = length(z_palette) + 1)
-    missing_color <- "#ffdada"  # light red for missing/unmappable
+    missing_color <- "#ffdada"
     
     map_sf <- map_sf %>% mutate(
       fillColor = case_when(
-        # --- Priority 1: Single country selected ---
         selected_country != "All" ~ if_else(name_long == selected_country, "blue", missing_color),
-        
-        # --- Priority 2: Any Pathogen/Disease/Host filter ---
         any_filter & MapStatus == "Mappable" ~ if_else(name_long %in% filtered_data()$Country, "blue", missing_color),
-        
-        # Priority 3: Z-score coloring for mapped countries
         MapStatus == "Mappable" ~ z_palette[cut(pmin(pmax(Z_value, -3), 3), breaks = z_breaks, include.lowest = TRUE)],
-        
-        # Default: unmappable
         TRUE ~ missing_color
       ),
       fillOpacity = ifelse(fillColor == missing_color, 0.5, 0.7)
     )
     
-    # Debugging: count of countries per branch
-    #debug_counts <- map_sf %>%
-    #  mutate(branch = case_when(
-    #    fillColor == "blue" ~ "blue",
-    #    fillColor == missing_color ~ "unmappable",
-    #    TRUE ~ "zscore"
-    #  )) %>%
-    #  group_by(branch) %>%
-    #  summarise(n = n(), .groups = "drop")
-    #print(paste0("Branch counts for selection (year=", filter_state$Year,
-    #             ", Pathogen=", filter_state$Pathogen,
-    #             ", Disease=", filter_state$Disease,
-    #             ", Host=", filter_state$Host, "):"))
-    #print(debug_counts)
-    
     map_sf
   })
   
-  # --- Leaflet base ---
+  # --- Leaflet base: Mobile-friendly initial view ---
   output$map <- renderLeaflet({
-    leaflet(world) %>% addTiles() %>% setView(lng = 0, lat = 20, zoom = 2)
+    leaflet(df2_cleaned) %>% addTiles() %>%
+      {
+        if (session$clientData$output_map_width < 768) {
+          setView(., lng = 0, lat = 20, zoom = 2)  # Mobile: show world
+        } else {
+          fitBounds(.,
+                    lng1 = min(df2_cleaned$lon, na.rm = TRUE),
+                    lat1 = min(df2_cleaned$lat, na.rm = TRUE),
+                    lng2 = max(df2_cleaned$lon, na.rm = TRUE),
+                    lat2 = max(df2_cleaned$lat, na.rm = TRUE)
+          )
+        }
+      } %>%
+      htmlwidgets::onRender("function(el, x) { window.myLeafletMap = this; }")
   })
   
   # --- Leaflet observer ---
@@ -494,15 +474,10 @@ server <- function(input, output, session) {
         fillOpacity = ~fillOpacity,
         weight = 0.5,
         color = "#444444",
-        #label = ~paste0(name_long, ": ", RecordCount_all, " record(s)"),
-        label = ~paste0(
-          "<b>", name_long, "</b><br/>",
-          "Record(s): ", RecordCount  # <-- use dynamic field
-        ) %>% lapply(htmltools::HTML),
+        label = ~paste0("<b>", name_long, "</b><br/>Record(s): ", RecordCount) %>% lapply(htmltools::HTML),
         highlightOptions = highlightOptions(weight = 2, color = "#666", fillOpacity = 0.9, bringToFront = TRUE)
       )
     
-    # --- Legend ---
     show_z_legend <- !((filter_state$Pathogen != "All") || 
                          (filter_state$Disease != "All") || 
                          (filter_state$Host != "All"))
@@ -516,7 +491,7 @@ server <- function(input, output, session) {
       
       z_vals <- -3:3
       z_colors <- rev(hcl.colors(length(z_vals), "Greens 3"))
-      legend_colors <- c(z_colors, "#ffdada")  # add missing color
+      legend_colors <- c(z_colors, "#ffdada")
       legend_labels <- c(as.character(z_vals), "No data")
       
       leafletProxy("map") %>%
@@ -554,6 +529,7 @@ server <- function(input, output, session) {
     datatable(df, options=list(pageLength=10,scrollX=TRUE))
   })
 }
+
 
 # --- Run App ---
 shinyApp(ui, server)
