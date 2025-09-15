@@ -109,6 +109,11 @@ ui <- fluidPage(
       select.refreshOptions(false);
       if (message.selected) select.setValue(message.selected);
     });
+    
+    Shiny.addCustomMessageHandler('blur_selectize', function(message) {
+      var select = $('#' + message.inputId).selectize()[0].selectize;
+      select.blur();  // remove focus so dropdown closes
+    });
   ")),
     
     # --- CSS ---
@@ -305,6 +310,7 @@ server <- function(input, output, session) {
         selected_val <- filter_state[[this_col]]
         if(!selected_val %in% choices) selected_val <- "All"
         safe_update_selectize(paste0("input_", this_col), choices, selected_val)
+        session$sendCustomMessage("blur_selectize", list(inputId = paste0("input_", this_col)))
       })
       
       # --- Observe user selection changes ---
@@ -611,12 +617,16 @@ server <- function(input, output, session) {
     log_interaction(session, "RESET_FILTERS", "User reset all filters")
     
     lapply(filter_columns,function(col) filter_state[[col]]<-"All")
+    
     updateSelectInput(session,"letter_Pathogen",selected="All")
     updateSelectizeInput(session,"input_Pathogen",selected="All",choices=c("All"),server=TRUE)
+    
     updateSelectInput(session,"letter_Disease",selected="All")
     updateSelectizeInput(session,"input_Disease",selected="All",choices=c("All"),server=TRUE)
+    
     updateSelectInput(session,"letter_Host",selected="All")
     updateSelectizeInput(session,"input_Host",selected="All",choices=c("All"),server=TRUE)
+    
     updateSelectInput(session,"input_Year",selected="All")
     updateSelectizeInput(session,"input_Country",selected="All")
   })
