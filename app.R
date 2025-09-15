@@ -1,4 +1,7 @@
-# --- app.R (Optimized, no flicker. Use MapStatus column. With interaction logging) ---
+# --- app.R (Optimized, no flicker. Use MapStatus column. With interaction logging.
+#            All drop-down lists update upon selection of any filter. 
+#            When 1 record, all categories get populated in banner.
+#            Collapsed legend. Map does not scroll on page scroll.    ) ---
 
 # --- Load logger ---
 source("scripts/logger.R")
@@ -86,100 +89,111 @@ unmappable_countries <- all_countries[full_data_cleaned$MapStatus[match(all_coun
 ui <- fluidPage(
   theme = shinytheme("readable"),
   tags$head(
-    # --- Custom JS & CSS ---
+    # --- Custom JS handler for dynamic country choices ---
     tags$script(HTML("
-      Shiny.addCustomMessageHandler('update_country_choices', function(message) {
-        var select = $('#input_Country').selectize()[0].selectize;
-        select.clearOptions(); 
-        select.clearOptionGroups();
-        var groupedChoices = message.choices;
-        groupedChoices.forEach(function(item) {
-          if (item.value && item.label) {
-            select.addOption({ value: item.value, label: item.label, text: item.label });
-          } else if (item.optgroup && Array.isArray(item.options)) {
-            select.addOptionGroup(item.optgroup, { label: item.optgroup });
-            item.options.forEach(function(opt) { 
-              select.addOption({ value: opt.value, label: opt.label, text: opt.label, optgroup: item.optgroup }); 
-            });
-          }
-        });
-        select.refreshOptions(false);
-        if (message.selected) select.setValue(message.selected);
+    Shiny.addCustomMessageHandler('update_country_choices', function(message) {
+      var select = $('#input_Country').selectize()[0].selectize;
+      select.clearOptions(); 
+      select.clearOptionGroups();
+      var groupedChoices = message.choices;
+      groupedChoices.forEach(function(item) {
+        if (item.value && item.label) {
+          select.addOption({ value: item.value, label: item.label, text: item.label });
+        } else if (item.optgroup && Array.isArray(item.options)) {
+          select.addOptionGroup(item.optgroup, { label: item.optgroup });
+          item.options.forEach(function(opt) { 
+            select.addOption({ value: opt.value, label: opt.label, text: opt.label, optgroup: item.optgroup }); 
+          });
+        }
       });
-    ")),
+      select.refreshOptions(false);
+      if (message.selected) select.setValue(message.selected);
+    });
+  ")),
+    
+    # --- CSS ---
     tags$style(HTML("
-      body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; }
-      .main-title { font-size: 48px; font-weight: bold; color: #0f5132; padding:5px 0 5px 0; margin-bottom: 0; }
-      .subtitle { font-size: 20px; color: #6c757d; margin: 0; padding: 0; }
-      .card { border: 1px solid #d1e7dd; background-color: #e9f7ef; padding:10px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-      .sidebar { background-color: #ffffff; border-radius: 8px; padding: 15px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-      .dataTables_wrapper { background-color: #ffffff; padding: 10px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-      .leaflet-container { border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
-    "))
+    body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; }
+    .main-title { font-size: 48px; font-weight: bold; color: #0f5132; padding:5px 0; margin-bottom: 0; }
+    .subtitle { font-size: 20px; color: #6c757d; margin: 0; padding: 0; }
+
+    /* --- Filter Bar Styling --- */
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .filter-item { flex: 1 1 200px; min-width: 180px; }
+
+    /* --- Category Box --- */
+    .filter-box {
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      padding: 6px 8px;
+      background-color: #fff;
+    }
+  "))
   ),
   
-#  titlePanel(
-    div(
-      style = "text-align:center; margin-top:-20px;",
-      h1("Robigus", class="main-title"),
-      p("An initiative from the UF/IFAS Department of Plant Pathology to catalog and map plant diseases globally", class="subtitle"),
-      h6("Plant Disease Notes (1980 - 2024) published by American Phytopathological Society Press", style="color: black; margin-top:5px;")
-#    )
+  # --- Title ---
+  div(
+    style = "text-align:center; margin-top:-20px;",
+    h1("Robigus", class="main-title"),
+    p("An initiative from the UF/IFAS Department of Plant Pathology to catalog and map plant diseases globally", class="subtitle"),
+    h6("Plant Disease Notes (1980 - 2024) published by American Phytopathological Society Press", 
+       style="color: black; margin-top:5px;")
   ),
   
   uiOutput("banner_ui"),
   
-  sidebarLayout(
-    sidebarPanel(
-      class = "sidebar",
-      
-      # --- Existing Filter Controls ---
-      fluidRow(
-        column(4, selectInput("letter_Pathogen", "Pathogen: A-Z", 
-                              choices = c("All","#",LETTERS), selected = "All")),
-        column(8, selectInput("input_Pathogen", "Select Pathogen", 
-                              choices = c("All"), selected = "All"))
+  # --- FILTER BAR (with grouped boxes) ---
+  div(class = "filter-bar",
+      # Pathogen box
+      div(class="filter-item",
+          selectInput("letter_Pathogen", "Pathogen: A-Z", choices = c("All","#",LETTERS), selected = "All"),
+          selectInput("input_Pathogen", "Select Pathogen", choices = c("All"), selected = "All")
       ),
-      fluidRow(
-        column(4, selectInput("letter_Disease", "Disease: A-Z", 
-                              choices = c("All","#",LETTERS), selected = "All")),
-        column(8, selectInput("input_Disease", "Select Disease", 
-                              choices = c("All"), selected = "All"))
+      # Disease box
+      div(class="filter-item",
+          selectInput("letter_Disease", "Disease: A-Z", choices = c("All","#",LETTERS), selected = "All"),
+          selectInput("input_Disease", "Select Disease", choices = c("All"), selected = "All")
       ),
-      fluidRow(
-        column(4, selectInput("letter_Host", "Host: A-Z", 
-                              choices = c("All","#",LETTERS), selected = "All")),
-        column(8, selectInput("input_Host", "Select Host", 
-                              choices = c("All"), selected = "All"))
+      # Host box
+      div(class="filter-item",
+          selectInput("letter_Host", "Host: A-Z", choices = c("All","#",LETTERS), selected = "All"),
+          selectInput("input_Host", "Select Host", choices = c("All"), selected = "All")
       ),
-      selectizeInput(
-        "input_Country", "Select Country", choices = NULL, selected = "All", width = "100%",
-        options = list(
-          placeholder = "All", 
-          labelField = "label", 
-          valueField = "value", 
-          optgroupField = "optgroup"
-        )
+      # Country and Year
+      div(class="filter-item",
+          selectizeInput("input_Country", "Select Country", choices = NULL, selected = "All",
+                         options = list(placeholder = "All", labelField = "label", valueField = "value", optgroupField = "optgroup")),
+          selectInput("input_Year", "Select Year", choices = c("All"), selected = "All")
       ),
-      selectInput("input_Year", "Select Year", 
-                  choices = c("All"), selected = "All", width = "100%"),
-      tags$div(style="margin-top:15px;", 
-               actionButton("reset_btn", "Reset All Filters", 
-                            class="btn btn-outline-primary")),
-      
-      # --- New About Panel (inside sidebar) ---
-      hr(),
+      # Reset
+      div(class="filter-item", 
+          style="display:flex; align-items:center; justify-content:center;",
+          actionButton("reset_btn", "Reset All", class="btn btn-outline-primary"))
+  ),
+  br(),
+  
+  # --- FULL-WIDTH MAP ---
+  fluidRow(
+    column(12, leafletOutput("map", height = 500))
+  ),
+  br(),
+  
+  # --- ABOUT PANEL + TABLE SIDE BY SIDE ---
+  fluidRow(
+    column(
+      4,
       wellPanel(
         style = "
-                background-color: #e6f7e6;      /* light green */
-                border: 1px solid #b7dfb7;      /* subtle border */
-                border-radius: 12px;             /* more rounded corners */
-                padding: 12px 15px;              /* compact padding */
-                box-shadow: 2px 2px 6px rgba(0,0,0,0.1); /* subtle shadow */
+                background-color: #e6f7e6;
+                border: 1px solid #b7dfb7;
+                border-radius: 12px;
+                padding: 12px 15px;
+                box-shadow: 2px 2px 6px rgba(0,0,0,0.1);
                 text-align: left;
               ",
-        tags$img(src = "logo.png", height = "60px", style = "float: right; margin-left: 10px; border-radius: 3px;"),
-        h4("About this App"),
+        tags$img(src = "logo.png", height = "50px", 
+                 style = "float: right; margin-left: 10px; border-radius: 3px;"),
+        h5("About this App"),
         tags$p(HTML("<b>Creator:</b> Braham Dhillon,<br>Assistant Professor")),
         tags$p(HTML("<b>Affiliation:</b><br>
                     University of Florida<br>
@@ -187,17 +201,17 @@ ui <- fluidPage(
                     Department of Plant Pathology<br>
                     Fort Lauderdale Research and Education Center<br>
                     Davie, FL")),
-        tags$p(HTML("<b>Contact:</b> <br>dhillonb *at* ufl *dot* edu")),
+        tags$p(HTML("<b>Contact:</b><br>dhillonb *at* ufl *dot* edu"))
       )
     ),
-    
-    mainPanel(
-      leafletOutput("map", height = 500),
-      br(),
+    column(
+      8,
       DTOutput("filtered_table")
     )
   )
 )
+
+
 
 # --- SERVER ---
 server <- function(input, output, session) {
@@ -231,29 +245,81 @@ server <- function(input, output, session) {
     df
   })
   
-  # --- Letter filtering ---
+  # --- Helper functions ---
   get_filtered_choices <- function(df, col, letter) {
     vals <- unique(na.omit(df[[col]]))
-    if(!is.null(letter) && letter != "All") {
-      if(letter=="#") vals <- vals[grepl("^[^A-Za-z]", vals)]
-      else vals <- vals[grepl(paste0("^", letter), vals, ignore.case=TRUE)]
+    if (!is.null(letter) && letter != "All") {
+      if (letter == "#") {
+        vals <- vals[grepl("^[^A-Za-z]", vals)]
+      } else {
+        vals <- vals[grepl(paste0("^", letter), vals, ignore.case = TRUE)]
+      }
     }
     sort(as.character(vals))
   }
   
-  # --- Dynamic dropdowns ---
+  safe_update_selectize <- function(inputId, choices, selected) {
+    current_choices <- isolate(input[[inputId]])
+    if (!identical(sort(choices), sort(current_choices)) || !identical(selected, input[[inputId]])) {
+      updateSelectizeInput(session, inputId, choices = choices, selected = selected, server = TRUE)
+    }
+  }
+  
+  safe_update_select <- function(inputId, choices, selected) {
+    current_choices <- isolate(input[[inputId]])
+    if (!identical(choices, current_choices) || !identical(selected, input[[inputId]])) {
+      updateSelectInput(session, inputId, choices = choices, selected = selected)
+    }
+  }
+  
+  # --- Reactive filtered dataset ---
+  filtered_data <- reactive({
+    df <- full_data_cleaned
+    for(col in c("Pathogen","Disease","Host","Country","Year")) {
+      val <- filter_state[[col]]
+      if(!is.null(val) && val != "All") df <- df[!is.na(df[[col]]) & df[[col]]==val, ]
+    }
+    if(nrow(df) == 0) df <- full_data_cleaned
+    df
+  })
+  
+  # --- Pathogen / Disease / Host (A-Z + select) ---
   for(col in c("Pathogen","Disease","Host")) {
     local({
       this_col <- col
-      observeEvent(input[[paste0("letter_", this_col)]], {
-        log_interaction(session, "LETTER_FILTER", paste0(this_col, " letter = ", input[[paste0("letter_", this_col)]]))
-        
+      
+      # --- Reactive update whenever filtered_data changes ---
+      observe({
         df <- filtered_data()
-        choices <- c("All", get_filtered_choices(df, this_col, input[[paste0("letter_", this_col)]]))
+        
+        # --- Update available letters for A-Z dropdown ---
+        vals <- unique(na.omit(df[[this_col]]))
+        letters_available <- c("All", "#", LETTERS[LETTERS %in% toupper(substr(vals,1,1))])
+        selected_letter <- input[[paste0("letter_", this_col)]]
+        if(is.null(selected_letter) || !selected_letter %in% letters_available) selected_letter <- "All"
+        updateSelectInput(session, paste0("letter_", this_col),
+                          choices = letters_available, selected = selected_letter)
+        
+        # --- Update category select based on selected letter ---
+        choices <- c("All", get_filtered_choices(df, this_col, selected_letter))
         selected_val <- filter_state[[this_col]]
         if(!selected_val %in% choices) selected_val <- "All"
-        updateSelectizeInput(session, paste0("input_", this_col), choices=choices, selected=selected_val, server=TRUE)
-      }, ignoreInit=TRUE)
+        safe_update_selectize(paste0("input_", this_col), choices, selected_val)
+      })
+      
+      # --- Observe user selection changes ---
+      observeEvent(input[[paste0("input_", this_col)]], {
+        filter_state[[this_col]] <- input[[paste0("input_", this_col)]]
+      }, ignoreInit=TRUE, ignoreNULL=TRUE)
+      
+      observeEvent(input[[paste0("letter_", this_col)]], {
+        df <- filtered_data()
+        letter <- input[[paste0("letter_", this_col)]]
+        choices <- c("All", get_filtered_choices(df, this_col, letter))
+        selected_val <- filter_state[[this_col]]
+        if(!selected_val %in% choices) selected_val <- "All"
+        safe_update_selectize(paste0("input_", this_col), choices, selected_val)
+      }, ignoreInit=TRUE, ignoreNULL=TRUE)
     })
   }
   
@@ -265,23 +331,43 @@ server <- function(input, output, session) {
     unmappable <- setdiff(valid_vals, mappable)
     
     choices_list <- list(list(value="All", label="All"))
-    if(length(mappable)>0) choices_list <- c(choices_list, list(list(optgroup="Mappable Countries", options=lapply(mappable,function(x) list(value=x,label=x)))))
-    if(length(unmappable)>0) choices_list <- c(choices_list, list(list(optgroup="Unmappable / General Regions", options=lapply(unmappable,function(x) list(value=x,label=x)))))
+    if(length(mappable)>0) {
+      choices_list <- c(choices_list,
+                        list(list(optgroup="Mappable Countries",
+                                  options=lapply(mappable, function(x) list(value=x, label=x)))))
+    }
+    if(length(unmappable)>0) {
+      choices_list <- c(choices_list,
+                        list(list(optgroup="Unmappable / General Regions",
+                                  options=lapply(unmappable, function(x) list(value=x, label=x)))))
+    }
     
     selected_val <- filter_state$Country
     if(!selected_val %in% valid_vals) selected_val <- "All"
-    session$sendCustomMessage("update_country_choices", list(choices=choices_list, selected=selected_val))
+    
+    session$sendCustomMessage("update_country_choices",
+                              list(choices=choices_list, selected=selected_val))
   })
+  
+  observeEvent(input$input_Country, {
+    filter_state$Country <- input$input_Country
+  }, ignoreInit=TRUE, ignoreNULL=TRUE)
   
   # --- Year dropdown ---
   observe({
     df <- filtered_data()
     valid_vals <- sort(unique(na.omit(df$Year)))
     choices <- c("All", valid_vals)
+    
     selected_val <- filter_state$Year
     if(!selected_val %in% choices) selected_val <- "All"
-    updateSelectInput(session, "input_Year", choices=choices, selected=selected_val)
+    
+    safe_update_select("input_Year", choices, selected_val)
   })
+  
+  observeEvent(input$input_Year, {
+    filter_state$Year <- input$input_Year
+  }, ignoreInit=TRUE, ignoreNULL=TRUE)
   
   # --- Banner ---
   output$banner_ui <- renderUI({
@@ -296,6 +382,14 @@ server <- function(input, output, session) {
       paste0(col, ": ", lbl)
     })
     
+    # --- If exactly one record, populate actual values in placeholders ---
+    if(n == 1) {
+      rec <- df[1, ]
+      filter_texts <- sapply(filter_columns, function(col){
+        paste0(col, ": <strong>", rec[[col]], "</strong>")
+      })
+    }
+    
     count_text <- paste0(
       "<span style='background-color:#FFFF00; padding:2px 4px; border-radius:4px; font-weight:bold; font-size:1.1em;'>",
       "Showing ", n, " record", ifelse(n == 1, "", "s"),
@@ -308,15 +402,17 @@ server <- function(input, output, session) {
       paste0(count_text, " for ", paste(filter_texts, collapse="; "))
     }
     
-    tags$div(class="card",
-             style = "padding:5px 10px; margin-top:5px; margin-bottom:10px;",  # compact padding & margin
-             tags$h3("FILTER SUMMARY",
-                     style = "font-weight:bold;color:#0f5132;text-align:center;margin:2px 0; padding:0;"),
-             HTML(paste0(
-               "<p style='font-weight:500;color:#0f5132;text-align:center;margin:2px 0; padding:0;'>",
-               banner_text,
-               "</p>"
-             ))
+    tags$div(
+      class="card",
+      #style = "padding:5px 10px; margin-top:5px; margin-bottom:10px;",  # compact padding & margin
+      style = "border: 1px solid #d1e7dd; background-color: #e9f7ef; padding:10px; margin-top:5px; margin-bottom:10px; border-radius:8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);",
+      tags$h3("FILTER SUMMARY",
+              style = "font-weight:bold;color:#0f5132;text-align:center;margin:2px 0; padding:0;"),
+      HTML(paste0(
+        "<p style='font-weight:500;color:#0f5132;text-align:center;margin:2px 0; padding:0;'>",
+        banner_text,
+        "</p>"
+      ))
     )
   })
   
@@ -419,7 +515,32 @@ server <- function(input, output, session) {
   
   # --- Leaflet base ---
   output$map <- renderLeaflet({
-    leaflet(world) %>% addTiles() %>% setView(lng = 0, lat = 20, zoom = 2)
+    leaflet(world, options = leafletOptions(scrollWheelZoom = TRUE)) %>% 
+      addTiles() %>% 
+      setView(lng = 0, lat = 20, zoom = 2) %>%
+      htmlwidgets::onRender("
+      function(el, x) {
+        var map = this;
+
+        // instruction overlay
+        var info = document.createElement('div');
+        info.id = 'map-scroll-info';
+        info.innerHTML = 'Hold <b>Ctrl</b> + scroll to zoom map';
+        info.style.cssText = 'position:absolute;top:95%;left:50%;transform:translate(-50%, -50%);background:white;padding:5px 8px;border:1px solid #999;border-radius:4px;font-size:12px;opacity:0.8;z-index:1000;';
+        map.getContainer().appendChild(info);
+
+        // enable zoom only when Ctrl is held
+        map.getContainer().addEventListener('wheel', function(e) {
+          if(e.ctrlKey) {
+            e.preventDefault();          // prevent page scroll
+            map.scrollWheelZoom.enable();
+          } else {
+            map.scrollWheelZoom.disable();  // disables zoom
+            // do NOT preventDefault, so page scroll works
+          }
+        }, { passive: false });
+      }
+    ")
   })
   
   # --- Leaflet observer ---
@@ -459,15 +580,30 @@ server <- function(input, output, session) {
       z_colors <- rev(hcl.colors(length(z_vals), "Greens 3"))
       legend_colors <- c(z_colors, "#ffdada")  # add missing color
       legend_labels <- c(as.character(z_vals), "No data")
+
+      # Build HTML for the legend (initially hidden)
+      legend_html <- paste0(
+        "<div id='legend-box' style='background:white;padding:5px;border:1px solid #999;border-radius:5px;'>",
+        "<strong style='cursor:pointer;' onclick='var x=document.getElementById(\"legend-content\"); if(x.style.display==\"none\"){x.style.display=\"block\";} else{x.style.display=\"none\";}'>", 
+        legend_title, "</strong>",
+        "<div id='legend-content' style='display:none;margin-top:5px;'>",
+        paste0(
+          "<div style='display:flex;align-items:center;'>",
+          paste0(
+            "<div style='width:20px;height:20px;margin-right:3px;background:", z_colors, ";border:1px solid #444;'></div>",
+            "<span style='margin-right:5px;'>", z_vals, "</span>",
+            collapse=""
+          ),
+          "</div>"
+        ),
+        "<div style='display:flex;align-items:center;'><div style='width:20px;height:20px;margin-right:3px;background:#ffdada;border:1px solid #444;'></div><span>No data</span></div>",
+        "</div></div>"
+      )
       
-      leafletProxy("map") %>%
-        addLegend(
-          position = "bottomleft",
-          colors = legend_colors,
-          labels = legend_labels,
-          opacity = 0.7,
-          title = legend_title
-        )
+      leafletProxy("map") %>% addControl(
+        html = legend_html,
+        position = "bottomleft"
+      )
     }
   })
   
