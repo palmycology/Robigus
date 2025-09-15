@@ -529,14 +529,13 @@ server <- function(input, output, session) {
         info.style.cssText = 'position:absolute;top:95%;left:50%;transform:translate(-50%, -50%);background:white;padding:5px 8px;border:1px solid #999;border-radius:4px;font-size:12px;opacity:0.8;z-index:1000;';
         map.getContainer().appendChild(info);
 
-        // enable zoom only when Ctrl is held
+        // persistent wheel listener
         map.getContainer().addEventListener('wheel', function(e) {
           if(e.ctrlKey) {
-            e.preventDefault();          // prevent page scroll
-            map.scrollWheelZoom.enable();
+            e.preventDefault();               // prevent page scroll
+            map.scrollWheelZoom._enabled || map.scrollWheelZoom.enable();
           } else {
-            map.scrollWheelZoom.disable();  // disables zoom
-            // do NOT preventDefault, so page scroll works
+            map.scrollWheelZoom._enabled && map.scrollWheelZoom.disable();
           }
         }, { passive: false });
       }
