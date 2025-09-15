@@ -515,7 +515,7 @@ server <- function(input, output, session) {
   
   # --- Leaflet base ---
   output$map <- renderLeaflet({
-    leaflet(world, options = leafletOptions(scrollWheelZoom = TRUE)) %>% 
+    leaflet(world, options = leafletOptions(scrollWheelZoom = FALSE)) %>% 
       addTiles() %>% 
       setView(lng = 0, lat = 20, zoom = 2) %>%
       htmlwidgets::onRender("
