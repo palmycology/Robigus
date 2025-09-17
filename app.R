@@ -1,7 +1,8 @@
-# --- app.R (Optimized, no flicker. Use MapStatus column. With interaction logging.
-#            All drop-down lists update upon selection of any filter. 
-#            When 1 record, all categories get populated in banner.
-#            Collapsed legend. Map does not scroll on page scroll.    ) ---
+# --- app.R ( UPDATES: Optimized, no flicker. Use MapStatus column. With interaction logging.
+#             All drop-down lists update upon selection of any filter. 
+#             When filtered down to 1 record, all categories get populated in banner.
+#             Collapsed legend. Map does not scroll on page scroll. Added an hovering information box.    
+#             Made sure the +/- and full screen buttons on the map work                                ) ---
 
 # --- Load logger ---
 source("scripts/logger.R")
@@ -15,6 +16,7 @@ library(tidyr)
 library(sf)
 library(spData)
 library(leaflet)
+library(leaflet.extras)
 library(DT)
 library(stringr)
 library(shinythemes)
@@ -91,48 +93,109 @@ ui <- fluidPage(
   tags$head(
     # --- Custom JS handler for dynamic country choices ---
     tags$script(HTML("
-    Shiny.addCustomMessageHandler('update_country_choices', function(message) {
-      var select = $('#input_Country').selectize()[0].selectize;
-      select.clearOptions(); 
-      select.clearOptionGroups();
-      var groupedChoices = message.choices;
-      groupedChoices.forEach(function(item) {
-        if (item.value && item.label) {
-          select.addOption({ value: item.value, label: item.label, text: item.label });
-        } else if (item.optgroup && Array.isArray(item.options)) {
-          select.addOptionGroup(item.optgroup, { label: item.optgroup });
-          item.options.forEach(function(opt) { 
-            select.addOption({ value: opt.value, label: opt.label, text: opt.label, optgroup: item.optgroup }); 
-          });
-        }
+      Shiny.addCustomMessageHandler('update_country_choices', function(message) {
+        var select = $('#input_Country').selectize()[0].selectize;
+        select.clearOptions(); 
+        select.clearOptionGroups();
+        var groupedChoices = message.choices;
+        groupedChoices.forEach(function(item) {
+          if (item.value && item.label) {
+            select.addOption({ value: item.value, label: item.label, text: item.label });
+          } else if (item.optgroup && Array.isArray(item.options)) {
+            select.addOptionGroup(item.optgroup, { label: item.optgroup });
+            item.options.forEach(function(opt) { 
+              select.addOption({ value: opt.value, label: opt.label, text: opt.label, optgroup: item.optgroup }); 
+            });
+          }
+        });
+        select.refreshOptions(false);
+        if (message.selected) select.setValue(message.selected);
       });
-      select.refreshOptions(false);
-      if (message.selected) select.setValue(message.selected);
-    });
     
-    Shiny.addCustomMessageHandler('blur_selectize', function(message) {
-      var select = $('#' + message.inputId).selectize()[0].selectize;
-      select.blur();  // remove focus so dropdown closes
+      Shiny.addCustomMessageHandler('blur_selectize', function(message) {
+        var select = $('#' + message.inputId).selectize()[0].selectize;
+        select.blur();  // remove focus so dropdown closes
+      });
+    
+      document.addEventListener('DOMContentLoaded', function() {
+        var container = document.getElementById('infoContainer');
+        var tab = document.getElementById('infoTab');
+
+      // Start with box open
+      tab.textContent = \"✕\";  // thinner cross
+      tab.classList.remove(\"hamburger\");
+
+      tab.onclick = function(e) {
+      //  e.stopPropagation();
+        container.classList.toggle('collapsed');
+
+        if(container.classList.contains('collapsed')) {
+          tab.textContent = \"≡\";       // hamburger
+          tab.classList.add(\"hamburger\");
+          } else {
+          tab.textContent = \"✕\";       // cross
+          tab.classList.remove(\"hamburger\");
+        }
+      };
     });
   ")),
     
     # --- CSS ---
-    tags$style(HTML("
+  tags$style(HTML("
     body { font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; }
+    
     .main-title { font-size: 48px; font-weight: bold; color: #0f5132; padding:5px 0; margin-bottom: 0; }
     .subtitle { font-size: 20px; color: #6c757d; margin: 0; padding: 0; }
 
     /* --- Filter Bar Styling --- */
-    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+    .filter-bar { 
+      display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 5px;
+      position: relative; z-index: 10001; transition: margin-left 0.3s ease;
+    }
+
+    #infoContainer:not(.collapsed) ~ .filter-bar { margin-left: 330px; }
+    #infoContainer.collapsed ~ .filter-bar { margin-left: 10px; }
+
     .filter-item { flex: 1 1 200px; min-width: 180px; }
 
     /* --- Category Box --- */
     .filter-box {
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      padding: 6px 8px;
-      background-color: #fff;
+      border: 1px solid #ccc; border-radius: 6px; padding: 6px 8px; background-color: #fff;
     }
+    
+    /* --- Info Box Styling --- */
+    #infoContainer { position: fixed; top: 120px; left: 0; z-index: 9999; }
+
+    /* Info box */
+    #infoBox {
+      width: 320px; height: 520px; background: rgba(240,240,240,0.85);
+      border: none; border-radius: 0 8px 8px 0; padding: 10px;
+      box-shadow: 2px 2px 6px rgba(0,0,0,0.2); 
+      transition: transform 0.3s ease; position: relative; left: 0;
+    }
+
+    /* Content */
+    #infoBox .content { font-size: 13px; opacity: 1; transition: opacity 0.2s ease; }
+
+    /* Tab */
+    #infoTab {
+      width: 30px; height: 60px; background: rgba(240,240,240,0.9); border: none;
+      border-radius: 0 4px 4px 0; position: fixed; top: 150px; left: 320px; display: flex; 
+      justify-content: center; align-items: center; font-size: 18px; cursor: pointer;
+      user-select: none; transition: left 0.3s ease; z-index: 3;
+    }
+    
+    /* Cross symbol thinner (✕) */
+    #infoTab.collapsed, infoTab.open { font-family: 'Arial', sans-serif; font-weight: 400; font-size: 18px; }
+
+    /* Hamburger spacing */
+    #infoTab.hamburger { letter-spacing: 4px; font-weight: 700; }
+
+    /* Collapsed state */
+    #infoContainer.collapsed #infoBox { transform: translateX(-320px); }
+    #infoContainer.collapsed #infoBox .content { opacity: 0; pointer-events: none; }
+    #infoContainer.collapsed #infoTab { left: 0; }
+    
   "))
   ),
   
@@ -145,41 +208,66 @@ ui <- fluidPage(
        style="color: black; margin-top:5px;")
   ),
   
+  # --- Info Popup ---
+  tags$div(
+    id = "infoContainer",
+    tags$div(
+      id = "infoBox",
+        tags$div(class = "content",
+          tags$h4("Information"),
+          "The map presents the distribution of plant Diseases, along with Pathogens and Hosts across the globe.
+          A total of 9,607 Plant Disease Note (PDN) titles published by APS over a period of 45 years were analyzed.", 
+          tags$br(), tags$br(), 
+          "The current map shows an 'AAA summary' of ALL the PDNs published over ALL the years for ALL the countries. 
+          The green color intensity is proportional to the number of PDNs published from that country. 
+          As you hover over a region, the cummulative number of published PDNs can be seen.", 
+          tags$br(), tags$br(), 
+          "Explore the occurence of your favorite pathogen or disesae. The three categories, 
+          Pathogen, Disease, and Host, have their own pre-filters to parse the lists. 
+          First select the alphabet and then select a value for that category. 
+          The Country category is split into two classes, Mappable and Unmappable. 
+          The Year filter shows all countries which published PDNs in that particular year.", 
+          tags$br(), tags$br(), 
+          "Below the map is a Table of Citations for the data being plotted."
+        )
+      ),
+    tags$div(id = "infoTab", "✖")
+  ),
+  
   uiOutput("banner_ui"),
   
   # --- FILTER BAR (with grouped boxes) ---
   div(class = "filter-bar",
-      # Pathogen box
-      div(class="filter-item",
-          selectInput("letter_Pathogen", "Pathogen: A-Z", choices = c("All","#",LETTERS), selected = "All"),
-          selectInput("input_Pathogen", "Select Pathogen", choices = c("All"), selected = "All")
-      ),
-      # Disease box
-      div(class="filter-item",
-          selectInput("letter_Disease", "Disease: A-Z", choices = c("All","#",LETTERS), selected = "All"),
-          selectInput("input_Disease", "Select Disease", choices = c("All"), selected = "All")
-      ),
-      # Host box
-      div(class="filter-item",
-          selectInput("letter_Host", "Host: A-Z", choices = c("All","#",LETTERS), selected = "All"),
-          selectInput("input_Host", "Select Host", choices = c("All"), selected = "All")
-      ),
-      # Country and Year
-      div(class="filter-item",
-          selectizeInput("input_Country", "Select Country", choices = NULL, selected = "All",
-                         options = list(placeholder = "All", labelField = "label", valueField = "value", optgroupField = "optgroup")),
-          selectInput("input_Year", "Select Year", choices = c("All"), selected = "All")
-      ),
-      # Reset
-      div(class="filter-item", 
-          style="display:flex; align-items:center; justify-content:center;",
-          actionButton("reset_btn", "Reset All", class="btn btn-outline-primary"))
+    # Pathogen box
+    div(class="filter-item",
+      selectInput("letter_Pathogen", "Pathogen: A-Z", choices = c("All","#",LETTERS), selected = "All"),
+      selectInput("input_Pathogen", "Select Pathogen", choices = c("All"), selected = "All")
+    ),
+    # Disease box
+    div(class="filter-item",
+      selectInput("letter_Disease", "Disease: A-Z", choices = c("All","#",LETTERS), selected = "All"),
+      selectInput("input_Disease", "Select Disease", choices = c("All"), selected = "All")
+    ),
+    # Host box
+    div(class="filter-item",
+      selectInput("letter_Host", "Host: A-Z", choices = c("All","#",LETTERS), selected = "All"),
+      selectInput("input_Host", "Select Host", choices = c("All"), selected = "All")
+    ),
+    # Country and Year
+    div(class="filter-item",
+      selectizeInput("input_Country", "Select Country", choices = NULL, selected = "All",
+                      options = list(placeholder = "All", labelField = "label", valueField = "value", optgroupField = "optgroup")),
+      selectInput("input_Year", "Select Year", choices = c("All"), selected = "All")
+    ),
+    # Reset
+    div(class="filter-item", 
+      style="display:flex; align-items:center; justify-content:center;",
+      actionButton("reset_btn", "Reset All", class="btn btn-outline-primary"))
   ),
-  br(),
   
   # --- FULL-WIDTH MAP ---
   fluidRow(
-    column(12, leafletOutput("map", height = 500))
+    column(12, leafletOutput("map", height = 550))
   ),
   br(),
   
@@ -216,13 +304,16 @@ ui <- fluidPage(
   )
 )
 
-
-
 # --- SERVER ---
 server <- function(input, output, session) {
   
   # --- Log session start ---
   log_interaction(session, "SESSION_START", "User connected")
+  # Initialize info box behavior
+  
+  observe({
+    session$sendCustomMessage("initInfoBox", list())
+  })
   
   # --- Make sure to log when session ends ---
   session$onSessionEnded(function() {
@@ -521,12 +612,16 @@ server <- function(input, output, session) {
   
   # --- Leaflet base ---
   output$map <- renderLeaflet({
-    leaflet(world, options = leafletOptions(scrollWheelZoom = FALSE)) %>% 
+    leaflet(world, options = leafletOptions(zoomControl = TRUE, scrollWheelZoom = FALSE)) %>% 
       addTiles() %>% 
-      setView(lng = 0, lat = 20, zoom = 2) %>%
+      setView(lng = 0, lat = 26, zoom = 2) %>%
+      addFullscreenControl(pseudoFullscreen = TRUE, position = "topright") %>% 
       htmlwidgets::onRender("
       function(el, x) {
         var map = this;
+        
+        // Move zoom controls to top-right
+        map.zoomControl.setPosition('topright');
 
         // instruction overlay
         var info = document.createElement('div');
@@ -536,6 +631,8 @@ server <- function(input, output, session) {
         map.getContainer().appendChild(info);
 
         // persistent wheel listener
+        map.scrollWheelZoom.disable();
+        
         map.getContainer().addEventListener('wheel', function(e) {
           if(e.ctrlKey) {
             e.preventDefault();               // prevent page scroll
@@ -555,24 +652,21 @@ server <- function(input, output, session) {
     leafletProxy("map", data = map_sf) %>%
       clearShapes() %>%
       clearControls() %>%
+      addFullscreenControl(pseudoFullscreen = TRUE, position = "topleft") %>%
       addPolygons(
-        data = map_sf,
         fillColor = ~fillColor,
         fillOpacity = ~fillOpacity,
         weight = 0.5,
         color = "#444444",
-        #label = ~paste0(name_long, ": ", RecordCount_all, " record(s)"),
-        label = ~paste0(
-          "<b>", name_long, "</b><br/>",
-          "Record(s): ", RecordCount  # <-- use dynamic field
-        ) %>% lapply(htmltools::HTML),
+        label = ~paste0("<b>", name_long, "</b><br/>", "Record(s): ", RecordCount) %>% lapply(htmltools::HTML),
         highlightOptions = highlightOptions(weight = 2, color = "#666", fillOpacity = 0.9, bringToFront = TRUE)
       )
     
-    # --- Legend ---
+    # --- Dynamic Z-score Legend ---
     show_z_legend <- !((filter_state$Pathogen != "All") || 
-                         (filter_state$Disease != "All") || 
-                         (filter_state$Host != "All"))
+                       (filter_state$Disease  != "All") || 
+                       (filter_state$Host     != "All") ||
+                       (filter_state$Country  != "All")) 
     
     if(show_z_legend) {
       legend_title <- if(filter_state$Year != "All") {
@@ -583,8 +677,8 @@ server <- function(input, output, session) {
       
       z_vals <- -3:3
       z_colors <- rev(hcl.colors(length(z_vals), "Greens 3"))
-      legend_colors <- c(z_colors, "#ffdada")  # add missing color
-      legend_labels <- c(as.character(z_vals), "No data")
+#      legend_colors <- c(z_colors, "#ffdada")  # add missing color
+#      legend_labels <- c(as.character(z_vals), "No data")
 
       # Build HTML for the legend (initially hidden)
       legend_html <- paste0(
@@ -605,10 +699,7 @@ server <- function(input, output, session) {
         "</div></div>"
       )
       
-      leafletProxy("map") %>% addControl(
-        html = legend_html,
-        position = "bottomleft"
-      )
+      leafletProxy("map") %>% addControl(html = legend_html, position = "bottomleft")
     }
   })
   
