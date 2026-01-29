@@ -10,16 +10,16 @@ init_logger()
 
 # --- Load libraries ---
 library(shiny)
+library(shinythemes)
 library(dplyr)
 library(readr)
 library(tidyr)
+library(stringr)
 library(sf)
 library(spData)
 library(leaflet)
 library(leaflet.extras)
 library(DT)
-library(stringr)
-library(shinythemes)
 
 # Load world map
 data(world)
@@ -215,20 +215,22 @@ ui <- fluidPage(
       id = "infoBox",
         tags$div(class = "content",
           tags$h4("Information"),
-          "The map presents the distribution of plant Diseases, along with Pathogens and Hosts across the globe.
-          A total of 9,607 Plant Disease Note (PDN) titles published by APS over a period of 45 years were analyzed.", 
+          "This ", tags$strong("interactive map")," showing ", tags$strong("the distribution of plant diseases"),
+          " is based on an analysis of 9,609 Plant Disease Note (PDN) titles 
+          published by ", tags$strong("American Phytopathological Society (APS)")," over 45 years.", 
           tags$br(), tags$br(), 
-          "The current map shows an 'AAA summary' of ALL the PDNs published over ALL the years for ALL the countries. 
-          The green color intensity is proportional to the number of PDNs published from that country. 
-          As you hover over a region, the cummulative number of published PDNs can be seen.", 
+          "The current map shows an ", tags$strong("'AAA summary'")," i.e., ALL PDNs published over ALL years for ALL countries. 
+          ", tags$strong("Intensity of green color")," is proportional to the number of PDNs published from that country. 
+          As you hover over a region, the cumulative number of published PDNs can be seen.", 
           tags$br(), tags$br(), 
-          "Explore the occurence of your favorite pathogen or disesae. The three categories, 
-          Pathogen, Disease, and Host, have their own pre-filters to parse the lists. 
-          First select the alphabet and then select a value for that category. 
-          The Country category is split into two classes, Mappable and Unmappable. 
-          The Year filter shows all countries which published PDNs in that particular year.", 
+          tags$strong("HOW IT WORKS: "),"Use the filter panel to explore the data. 
+          Filtering is ", tags$strong("hierarchical")," i.e., each selection refines the available values in other categories. 
+          Three categories - ", tags$strong("Pathogen, Disease")," and ", tags$strong("Host")," - have alphabetical pre-filters. 
+          The ", tags$strong("Country")," category is split into ", tags$i("Mappable")," and ", tags$i("Unmappable")," data, 
+          while the ", tags$strong("Year")," filter highlights countries that published PDNs in a given year. When a single record 
+          remains, all details appear in the summary banner.", 
           tags$br(), tags$br(), 
-          "Below the map is a Table of Citations for the data being plotted."
+          "Below the map is a ", tags$strong("Table of Citations")," for the data being plotted."
         )
       ),
     tags$div(id = "infoTab", "✖")
